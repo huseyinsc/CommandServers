@@ -10,6 +10,7 @@
 #include <ctime>
 #include <string>
 #include <vector>
+#include <stdexcept>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -261,7 +262,7 @@ std::string get_cmd_output(const std::string& command, int buffer_size)
     }
 
     return result;
-}
+} 
 
 std::string echo(const std::string& input, bool& contains_variable)
 {
@@ -270,7 +271,15 @@ std::string echo(const std::string& input, bool& contains_variable)
         return "";
     }
     std::string command = "echo " + input;
-    std::string output = get_cmd_output(command);
+    std::string output = "";
+    try
+    {
+        output = get_cmd_output(command);
+    }
+    catch(const std::exception& e)
+    {
+        std::cerr << e.what() << '\n';
+    }
     contains_variable = output != input;
     return output;
 }
@@ -1010,6 +1019,11 @@ int command(std::string command, std::string os)
         {
             command.erase(std::remove(command.begin(), command.end(), '"'), command.end());
         }*/
+        //if command arguments vector is empty, assign command_args[0] to ""
+        if(command_args.empty())
+        {
+            command_args.push_back("");
+        }
 
         if(!empty)
         {

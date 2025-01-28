@@ -47,8 +47,8 @@ def get_message():
 if __name__ == '__main__':
     subprocess.run(["cmd.exe", "/c", "g++ colorline.cpp -o colorline.exe"], shell=True)
     subprocess.run(["cmd.exe", "/c", "g++ CustomCmd.cpp -o CustomCmd.exe"], shell=True)
-    '""';subprocess.run(["cmd.exe", "/c", "javac java\\CommandServer.java"], shell=True)
-    '""';subprocess.run(["cmd.exe", "/c", "javac java\\CommandClient.java"], shell=True)
-    '"#"';subprocess.Popen(["cmd.exe", "/c", "java java\\CommandServer"], shell=True)
-    '"#"';subprocess.Popen(["cmd.exe", "/c", "java java\\CommandClient use_api"], shell=True)
+    subprocess.run(["cmd.exe", "/c", "javac java\\CommandServer.java"], shell=True)
+    subprocess.run(["cmd.exe", "/c", "javac java\\CommandClient.java"], shell=True)
+    subprocess.Popen(["cmd.exe", "/c", "java java\\CommandServer"], shell=True)
+    subprocess.Popen(["cmd.exe", "/c", "java java\\CommandClient use_api"], shell=True)
     app.run(host='localhost', port=80)  

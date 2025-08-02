@@ -1,4 +1,6 @@
 #include <iostream>
+#include <thread>
+#include <chrono>
 #include <optional>
 #include <algorithm>
 #include <filesystem> 
@@ -38,7 +40,7 @@ bool in(const std::vector<std::string>& vec, const std::string& str);
 std::vector<std::string> split(const std::string& str, const std::optional<std::string>& delimiter, const std::pair<std::vector<std::string>, 
                                std::vector<std::string> >& enclose = {}, const std::string& ignore_enclose = "\\");
 std::string lower_str(const std::string& str);
-void getInput(std::string& input);
+bool getInput(std::string& input);
 void sleep_ms(unsigned int milliseconds);
 
 int ARGC;
@@ -65,6 +67,10 @@ int main(int argc, char* argv[])
     std::string input;
     int answer = 0;
 
+    // Enable line buffering for better real-time output
+    setvbuf(stdout, NULL, _IOLBF, 0);
+    setvbuf(stderr, NULL, _IOLBF, 0);
+
     if(argc > 1)
     {
         bool continue_program = handle_args(argc, argv, os);
@@ -82,7 +88,14 @@ int main(int argc, char* argv[])
     while(true)
     {
         std::cout << "1) Run File 2) Read File 3) Write Into File 4) Append To The File 5) Enter Command 6) Exit\n Choose: ";
-        std::getline(std::cin, input);
+        
+        if (!std::getline(std::cin, input)) 
+        {
+            // Handle case when stdin is closed (from web interface)
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            continue;
+        }
+
         try
     	{
     		answer = std::stoi(input);
@@ -100,7 +113,7 @@ int main(int argc, char* argv[])
                 bool temp_state = false;
                 std::cout << "supported file types: (.exe), (.c), (.cpp), (.py), (.mp3)\n";
                 std::cout << "Enter file type(.extension) or \"back\" to return to options: ";
-                getInput(filetype);
+                if (!getInput(filetype)) continue;
 
                 if(filetype == "back")
                 {
@@ -108,7 +121,7 @@ int main(int argc, char* argv[])
                 }
 
                 std::cout << "Enter file path(type \"temp\" to create temporary file for testing): ";
-                getInput(filename);
+                if (!getInput(filename)) continue;
 
                 if(filename == "temp")
                 {
@@ -122,7 +135,7 @@ int main(int argc, char* argv[])
             else if(answer == 2)
             {
                 std::cout << "Enter file path, variable name or \"back\" to return to options: ";
-                getInput(filename);
+                if (!getInput(filename)) continue;
                 
                 if(filename == "back")
                 {
@@ -135,7 +148,7 @@ int main(int argc, char* argv[])
             else if(answer == 3)
             {
                 std::cout << "Enter file type(.extension) or \"back\" to return to options: ";
-                getInput(filetype);
+                if (!getInput(filename)) continue;
                 
                 if(filetype == "back")
                 {
@@ -143,7 +156,7 @@ int main(int argc, char* argv[])
                 }
                 
                 std::cout << "Enter file path: ";
-                getInput(filename);
+                if (!getInput(filename)) continue;
                 
                 write(filetype, filename, false, os);
                 continue;
@@ -151,7 +164,7 @@ int main(int argc, char* argv[])
             else if(answer == 4)
             {
                 std::cout << "Enter file type(.extension) or \"back\" to return to options: ";
-                getInput(filetype);
+                if (!getInput(filename)) continue;
             
                 if (filetype == "back")
                 {
@@ -159,7 +172,7 @@ int main(int argc, char* argv[])
                 }
             
                 std::cout << "Enter file path: ";
-                getInput(filename);
+                if (!getInput(filename)) continue;
                 
                 append(filetype, filename);
                 continue;
@@ -533,13 +546,25 @@ std::string lower_str(const std::string& str)
     return result;
 }
 
-void getInput(std::string& input) 
+bool getInput(std::string& input) 
 {
-    std::getline(std::cin, input);
+    if (!std::getline(std::cin, input)) {
+        if (std::cin.eof()) {
+            // Handle case when stdin is closed (from web interface)
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            return false;
+        }
+        // Other error cases
+        std::cin.clear();
+        return false;
+    }
+    
     bool contains_variable = false;
     input = echo(input, contains_variable);
     trim(input);
     //strip(input, '"');
+    
+    return true;
 }
 
 void sleep_ms(unsigned int milliseconds) 

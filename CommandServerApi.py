@@ -1,54 +1,77 @@
 from flask import Flask, request, jsonify, render_template
 import subprocess
+import os
+import sys
+from threading import Thread
+from queue import Queue
 
 app = Flask(__name__)
 
-# Route to serve HTML page
+# Queue for inter-process communication
+output_queue = Queue()
+
 @app.route('/')
 def index():
     return render_template('index.html')
 
-# Endpoint to receive messages (POST)
-@app.route('/receive_message', methods=['POST'])
-def receive_message():
+@app.route('/execute', methods=['POST'])
+def execute_command():
+    data = request.get_json()
+    command = data.get('command', '').strip()
+    
+    if not command:
+        return jsonify({"error": "Empty command"}), 400
+    
     try:
-        data = request.get_json()
-        message = data.get('message')
-
-        if message is None:
-            return jsonify({'error': 'Message field is required'}), 400
-
-        # Store the message for the CommandClient to retrieve later
-        with open('messages.txt', 'a') as f:
-            f.write(message + '\n')
+        # Start the C++ process if not already running
+        if not hasattr(app, 'cpp_process'):
+            start_cpp_process()
         
-        return jsonify({'message': 'Message received'}), 200
-
+        # Send command to C++ process
+        app.cpp_process.stdin.write(command + "\n")
+        app.cpp_process.stdin.flush()
+        
+        # Get output from queue (non-blocking with timeout)
+        output = ""
+        try:
+            while True:
+                output += output_queue.get_nowait()
+        except:
+            pass
+        
+        return jsonify({"output": output})
+    
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({"error": str(e)}), 500
 
-# Endpoint to retrieve messages (GET)
-@app.route('/receive_message', methods=['GET'])
-def get_message():
-    try:
-        with open('messages.txt', 'r') as f:
-            messages = f.readlines()
-        if messages:
-            message = messages.pop(0).strip()
-            with open('messages.txt', 'w') as f:
-                f.writelines(messages)
-            return jsonify({'message': message}), 200
+def start_cpp_process():
+    cwd = os.path.dirname(os.path.abspath(__file__))
+    exe_path = os.path.join(cwd, "CustomCmd.exe")
+    
+    if not os.path.exists(exe_path):
+        raise FileNotFoundError("CustomCmd.exe not found")
+    
+    app.cpp_process = subprocess.Popen(
+        [exe_path],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        bufsize=1,
+        universal_newlines=True,
+        cwd=cwd
+    )
+    
+    # Start thread to capture output
+    Thread(target=read_output, args=(app.cpp_process,), daemon=True).start()
+
+def read_output(process):
+    while True:
+        line = process.stdout.readline()
+        if line:
+            output_queue.put(line)
         else:
-            return jsonify({'message': ''}), 200
-
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+            break
 
 if __name__ == '__main__':
-    subprocess.run(["cmd.exe", "/c", "g++ colorline.cpp -o colorline.exe"], shell=True)
-    subprocess.run(["cmd.exe", "/c", "g++ CustomCmd.cpp -o CustomCmd.exe"], shell=True)
-    subprocess.run(["cmd.exe", "/c", "javac java\\CommandServer.java"], shell=True)
-    subprocess.run(["cmd.exe", "/c", "javac java\\CommandClient.java"], shell=True)
-    subprocess.Popen(["cmd.exe", "/c", "java java\\CommandServer"], shell=True)
-    subprocess.Popen(["cmd.exe", "/c", "java java\\CommandClient use_api"], shell=True)
-    app.run(host='localhost', port=80)  
+    app.run(host='0.0.0.0', port=5000, debug=True)

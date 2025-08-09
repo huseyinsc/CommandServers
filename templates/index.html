@@ -5,10 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Command Terminal</title>
   <link rel="stylesheet" href="/static/css/styles.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
 </head>
 <body>
+  <div id="status-indicator" class="status-disconnected"></div>
+  <div class="connection-status" id="connection-status">Disconnected</div>
   <div class="terminal-container">
-    <div class="terminal-output" id="output"></div>
+    <div class="terminal-output" id="output">
+      <!--
+      <p>Welcome to the Command Terminal!</p>
+      <p>Type a command and press Enter to execute it.</p>
+      -->
+    </div>
     <div class="terminal-input">
       <input type="text" id="commandInput" placeholder="Enter command...">
       <button id="sendCommand">Execute</button>
